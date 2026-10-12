@@ -1,0 +1,89 @@
+name: Dev Debug APK
+
+# Fork-local addition (not upstream). Builds the fullDebug APK on every push to
+# `dev` and uploads the armeabi-v7a split, so the dev laptop never has to run
+# Kotlin + dex (the ~30 min part on a 6 GB box) — just download and `adb install`.
+#
+# Grab + install the newest build with:  .\dev-fetch-apk.ps1
+#
+# Signing: if the repo secret DEBUG_KEYSTORE_BASE64 is set (base64 of your local
+# ~/.android/debug.keystore) the APK is signed with the SAME key as your local
+# debug builds, so `adb install -r` updates the installed app in place. If the
+# secret is absent a throwaway key is generated and you must uninstall first.
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-debug-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: fullDebug APK (armeabi-v7a)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Prepare local properties
+        env:
+          LOCAL_PROPERTIES_BASE64: ${{ secrets.LOCAL_PROPERTIES_BASE64 }}
+          LOCAL_DEV_PROPERTIES_BASE64: ${{ secrets.LOCAL_DEV_PROPERTIES_BASE64 }}
+        run: |
+          if [ -n "$LOCAL_PROPERTIES_BASE64" ]; then
+            printf '%s' "$LOCAL_PROPERTIES_BASE64" | base64 --decode > local.properties
+          else
+            touch local.properties
+          fi
+
+          if [ -n "$LOCAL_DEV_PROPERTIES_BASE64" ]; then
+            printf '%s' "$LOCAL_DEV_PROPERTIES_BASE64" | base64 --decode > local.dev.properties
+          else
+            touch local.dev.properties
+          fi
+
+      - name: Prepare signing
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+            printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/dev.jks"
+          else
+            keytool -genkeypair -v \
+              -keystore "$RUNNER_TEMP/dev.jks" \
+              -storepass android -alias androiddebugkey -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US" \
+              -keyalg RSA -keysize 2048 -validity 10000
+          fi
+
+          {
+            echo "NUVIO_RELEASE_STORE_FILE=$RUNNER_TEMP/dev.jks"
+            echo "NUVIO_RELEASE_KEY_ALIAS=androiddebugkey"
+            echo "NUVIO_RELEASE_KEY_PASSWORD=android"
+            echo "NUVIO_RELEASE_STORE_PASSWORD=android"
+          } >> "$GITHUB_ENV"
+
+      - name: Assemble fullDebug
+        run: ./gradlew :app:assembleFullDebug --stacktrace
+
+      - name: Upload armeabi-v7a debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-debug-armeabi-v7a
+          path: app/build/outputs/apk/full/debug/app-full-armeabi-v7a-debug.apk
+          if-no-files-found: error
+          retention-days: 14
