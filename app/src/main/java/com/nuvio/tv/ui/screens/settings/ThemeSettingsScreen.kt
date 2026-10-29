@@ -69,6 +69,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.R
+import com.nuvio.tv.core.build.KinoFeaturePolicy
 import com.nuvio.tv.domain.model.AppIconOption
 import com.nuvio.tv.domain.model.AppTheme
 import com.nuvio.tv.domain.model.CustomThemeColors
@@ -291,6 +292,7 @@ fun ThemeSettingsContent(
                 }
             }
 
+            if (KinoFeaturePolicy.launcherArtworkPickerEnabled) {
             SettingsGroupCard(
                 modifier = Modifier.fillMaxWidth(),
                 title = stringResource(R.string.appearance_launcher_artwork),
@@ -306,6 +308,7 @@ fun ThemeSettingsContent(
                         showAppIconDialog = true
                     }
                 )
+            }
             }
 
             AmbientModeSettingsCard()

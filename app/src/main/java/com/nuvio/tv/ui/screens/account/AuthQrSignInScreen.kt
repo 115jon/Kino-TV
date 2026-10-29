@@ -68,6 +68,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.R
+import com.nuvio.tv.core.build.KinoFeaturePolicy
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.ui.components.BrandWordmark
 import com.nuvio.tv.ui.components.SkeletonBar
@@ -673,6 +674,7 @@ private fun displayVerificationUri(value: String): String = value
 
 @Composable
 private fun AuthTermsAcknowledgement() {
+    if (!KinoFeaturePolicy.upstreamLegalLinksEnabled) return
     val context = LocalContext.current
     Row(
         modifier = Modifier.fillMaxWidth(),
