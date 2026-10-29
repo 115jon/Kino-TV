@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.sentry.android.gradle)
 }
 
+import com.android.build.api.variant.BuildConfigField
 import com.android.build.gradle.internal.tasks.CompileArtProfileTask
 import com.android.build.gradle.internal.tasks.L8DexDesugarLibTask
 import java.io.File
@@ -380,6 +381,23 @@ androidComponents {
             })
         }
         variant.sources.assets?.addGeneratedSourceDirectory(embedTask, EmbedUpdateDexMetadataTask::outputDirectory)
+    }
+}
+
+val kinoApplicationId = "site.x115jon.kino.tv"
+val kinoVersion = Properties().apply {
+    rootProject.file("release/versions/android-tv.properties").inputStream().use(::load)
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.applicationId.set(if (variant.debuggable) "$kinoApplicationId.debug" else kinoApplicationId)
+        variant.outputs.forEach { output ->
+            output.versionName.set(kinoVersion.getProperty("versionName").trim())
+            output.versionCode.set(kinoVersion.getProperty("versionCode").trim().toInt())
+        }
+        variant.buildConfigFields?.put("GITHUB_OWNER", BuildConfigField("String", "\"115jon\"", null))
+        variant.buildConfigFields?.put("GITHUB_REPO", BuildConfigField("String", "\"Kino-TV\"", null))
     }
 }
 
