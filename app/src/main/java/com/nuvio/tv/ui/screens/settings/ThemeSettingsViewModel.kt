@@ -11,8 +11,7 @@ import com.nuvio.tv.domain.model.CosmeticEntitlements
 import com.nuvio.tv.domain.model.CustomThemeColors
 import com.nuvio.tv.domain.model.SettingsUiStyle
 import com.nuvio.tv.domain.model.availableAppThemes
-import com.nuvio.tv.domain.model.resolveAppTheme
-import com.nuvio.tv.domain.model.resolveCustomThemeColors
+import com.nuvio.tv.domain.model.KinoMemberAccess
 import com.nuvio.tv.launcher.AppIconManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,11 +76,11 @@ class ThemeSettingsViewModel @Inject constructor(
                 val entitlements = memberAccess.entitlements
                 Triple(
                     selection.copy(
-                        theme = resolveAppTheme(selection.theme, entitlements),
-                        customColors = resolveCustomThemeColors(selection.customColors, memberAccess.tier)
+                        theme = KinoMemberAccess.resolveTheme(selection.theme, entitlements),
+                        customColors = KinoMemberAccess.customColors(selection.customColors, memberAccess.tier)
                     ),
-                    availableAppThemes(entitlements),
-                    memberAccess.tier != null
+                    availableAppThemes(KinoMemberAccess.themes(entitlements)),
+                    KinoMemberAccess.gradientEnabled(memberAccess.tier)
                 )
             }
                 .distinctUntilChanged()
@@ -157,7 +156,7 @@ class ThemeSettingsViewModel @Inject constructor(
         if (currentTheme() == theme) return
         viewModelScope.launch {
             val access = memberAccessRepository.access.value
-            if (theme !in availableAppThemes(access.entitlements)) return@launch
+            if (theme !in availableAppThemes(KinoMemberAccess.themes(access.entitlements))) return@launch
             themeDataStore.setTheme(theme)
         }
     }
@@ -165,7 +164,7 @@ class ThemeSettingsViewModel @Inject constructor(
     private fun saveCustomTheme(colors: CustomThemeColors) {
         viewModelScope.launch {
             val access = memberAccessRepository.access.value
-            themeDataStore.setCustomTheme(resolveCustomThemeColors(colors, access.tier))
+            themeDataStore.setCustomTheme(KinoMemberAccess.customColors(colors, access.tier))
         }
     }
 
