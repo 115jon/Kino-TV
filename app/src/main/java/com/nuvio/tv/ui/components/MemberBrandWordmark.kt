@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
+import com.nuvio.tv.core.build.KinoFeaturePolicy
 import com.nuvio.tv.domain.model.MemberTier
 import com.nuvio.tv.ui.membership.Membership
 import kotlin.math.abs
@@ -98,7 +99,7 @@ fun MemberBrandWordmark(
             )
         }
 
-        access.tier?.let { tier ->
+        access.tier?.takeIf { KinoFeaturePolicy.memberBadgeEnabled }?.let { tier ->
             LocalMemberSuffix(
                 tier = tier,
                 height = height

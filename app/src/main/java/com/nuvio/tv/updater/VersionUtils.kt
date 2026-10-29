@@ -52,7 +52,7 @@ internal object VersionUtils {
 
     fun normalize(raw: String?): String {
         if (raw.isNullOrBlank()) return ""
-        return raw.trim().removePrefix("v").removePrefix("V")
+        return raw.trim().removePrefix("android-tv-").removePrefix("v").removePrefix("V")
     }
 
     fun parse(raw: String?): SemanticVersion? {
