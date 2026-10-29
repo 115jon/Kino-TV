@@ -1,0 +1,103 @@
+name: Platform Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.filter.outputs.android }}
+      tooling: ${{ steps.filter.outputs.tooling }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect affected areas
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          token: ${{ github.token }}
+          filters: |
+            android:
+              - 'app/**'
+              - 'baselineprofile/**'
+              - 'ffmpeg-decoder-downmix/**'
+              - 'DV7/**'
+              - 'gradle/**'
+              - 'build.gradle.kts'
+              - 'settings.gradle.kts'
+              - 'gradle.properties'
+              - 'release/versions/**'
+            tooling:
+              - 'scripts/kino/**'
+              - 'release/versions/**'
+              - '.github/**'
+              - 'app/src/*/res/values*/**'
+
+  android:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Configure a throwaway signing key
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/ci-debug.jks" -storepass android -alias androiddebugkey \
+            -keypass android -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
+          {
+            echo "NUVIO_RELEASE_STORE_FILE=$RUNNER_TEMP/ci-debug.jks"
+            echo "NUVIO_RELEASE_KEY_ALIAS=androiddebugkey"
+            echo "NUVIO_RELEASE_KEY_PASSWORD=android"
+            echo "NUVIO_RELEASE_STORE_PASSWORD=android"
+          } >> "$GITHUB_ENV"
+          printf '' > local.properties
+
+      - name: Test the updater and build the full debug APK
+        run: ./gradlew --no-daemon :app:testFullDebugUnitTest --tests 'com.nuvio.tv.updater.*' --tests 'com.nuvio.tv.ui.theme.*' :app:assembleFullDebug
+
+  tooling:
+    needs: changes
+    if: needs.changes.outputs.tooling == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Test the Kino scripts
+        run: node --test scripts/kino/*.test.mjs
+
+      - name: Validate monotonic release state
+        env:
+          BASELINE_REF: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/kino/release-version.mjs verify --baseline-ref="$BASELINE_REF"
+
+      - name: Check user-visible strings say Kino and Kino-deleted files stay deleted
+        run: node scripts/kino/rebrand.mjs --check

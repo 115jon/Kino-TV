@@ -1,0 +1,90 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+      HAS_RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN != '' }}
+    steps:
+      - name: Preserve trusted release tools
+        run: |
+          tools="$RUNNER_TEMP/kino-release-tools"
+          mkdir -p "$tools"
+          for file in versioning.mjs release-version.mjs; do
+            gh api "repos/$GITHUB_REPOSITORY/contents/scripts/kino/$file?ref=main" --jq .content | tr -d '\n' | base64 --decode > "$tools/$file"
+          done
+
+      - name: Run Release Please
+        id: release
+        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071
+        with:
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+          target-branch: main
+          config-file: .github/release-please/android-tv-config.json
+          manifest-file: .github/release-please/android-tv-manifest.json
+
+      - name: Start the release build
+        if: steps.release.outputs.release_created == 'true' && env.HAS_RELEASE_TOKEN != 'true'
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh workflow run android-release.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$RELEASE_TAG"
+
+      - name: Read release PR branch
+        id: release-pr
+        run: |
+          branch=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head "release-please--branches--main--components--android-tv" --state open --json headRefName --jq '.[0].headRefName')
+          if [ -n "$branch" ]; then
+            echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node
+        if: steps.release-pr.outputs.branch != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check out the release PR branch
+        if: steps.release-pr.outputs.branch != ''
+        env:
+          RELEASE_BRANCH: ${{ steps.release-pr.outputs.branch }}
+        run: |
+          git init
+          git remote add origin "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+          git fetch --no-tags origin "refs/heads/$RELEASE_BRANCH:refs/remotes/origin/$RELEASE_BRANCH" "refs/heads/main:refs/remotes/origin/main"
+          git checkout -B "$RELEASE_BRANCH" "origin/$RELEASE_BRANCH"
+
+      - name: Synchronize version code
+        if: steps.release-pr.outputs.branch != ''
+        run: node "$RUNNER_TEMP/kino-release-tools/release-version.mjs" sync --base-ref=origin/main
+
+      - name: Push synchronized version code
+        if: steps.release-pr.outputs.branch != ''
+        env:
+          RELEASE_BRANCH: ${{ steps.release-pr.outputs.branch }}
+        run: |
+          version_file="release/versions/android-tv.properties"
+          if git diff --quiet -- "$version_file"; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$version_file"
+          git commit -m "chore(release): sync android-tv version code"
+          git push origin "HEAD:$RELEASE_BRANCH"
