@@ -50,6 +50,7 @@ scripts/*
 !scripts/release_beta.py
 !scripts/tests/
 !scripts/tests/*.py
+!scripts/kino/
 /supabase
 /SUPPORTER_COSMETICS.md
 tv-samples
@@ -61,5 +62,6 @@ local-assets/supporter-profile-backgrounds/
 logs
 AGENTS.md
 /PR.md
-docs/
+docs/*
+!docs/operations/
 status-page/
