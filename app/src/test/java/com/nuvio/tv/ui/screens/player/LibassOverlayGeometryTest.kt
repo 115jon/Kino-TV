@@ -2,7 +2,9 @@ package com.nuvio.tv.ui.screens.player
 
 import android.graphics.RectF
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibassOverlayGeometryTest {
@@ -51,5 +53,28 @@ class LibassOverlayGeometryTest {
     fun margins_forUnmeasuredOrInvalidBounds_areAbsent() {
         assertNull(libassOverlayMargins(0, 1080, RectF(0f, 0f, 1920f, 1080f)))
         assertNull(libassOverlayMargins(1920, 1080, RectF(0f, 0f, 0f, 1080f)))
+    }
+
+    @Test
+    fun margins_unchangedOnRelayout_areNotReapplied() {
+        val handler = Any()
+        val overlay = Any()
+        val margins = LibassOverlayMargins(top = 140, bottom = 140, left = 0, right = 0)
+        val applied = AppliedLibassMargins(handler, overlay, margins)
+
+        assertFalse(libassMarginsNeedApplying(applied, handler, overlay, margins.copy()))
+    }
+
+    @Test
+    fun margins_areAppliedFirstAndWhenGeometryHandlerOrOverlayChange() {
+        val handler = Any()
+        val overlay = Any()
+        val margins = LibassOverlayMargins(top = 140, bottom = 140, left = 0, right = 0)
+        val applied = AppliedLibassMargins(handler, overlay, margins)
+
+        assertTrue(libassMarginsNeedApplying(null, handler, overlay, margins))
+        assertTrue(libassMarginsNeedApplying(applied, handler, overlay, margins.copy(top = 0, bottom = 0)))
+        assertTrue(libassMarginsNeedApplying(applied, Any(), overlay, margins))
+        assertTrue(libassMarginsNeedApplying(applied, handler, Any(), margins))
     }
 }
