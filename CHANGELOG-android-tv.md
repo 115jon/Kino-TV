@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.1](https://github.com/115jon/Kino-TV/compare/android-tv-v0.1.0...android-tv-v0.1.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **player:** 🐛 stop libass subtitles lingering until the next line ([42241af](https://github.com/115jon/Kino-TV/commit/42241af6c43609f5caabcf29e6fac72c901c8c9e))
+* **player:** stop libass subtitles lingering until the next line ([413982d](https://github.com/115jon/Kino-TV/commit/413982d5caa6c62928d4b562472055a9ac03c8fd))
+* **updater:** 🐛 prefer the kino tv apk release asset ([dd54b8a](https://github.com/115jon/Kino-TV/commit/dd54b8a9508bd782d3bba87409514339f052c26b))
+* **updater:** prefer the Kino TV APK release asset ([5f6c74d](https://github.com/115jon/Kino-TV/commit/5f6c74d2d68305a1b70337df59e4cb4f401c91a6))
+
 ## 0.1.0 (2026-10-29)
 
 
