@@ -51,6 +51,22 @@ internal data class LibassOverlayMargins(
     val right: Int
 )
 
+internal data class AppliedLibassMargins(
+    val handler: Any,
+    val overlay: Any,
+    val margins: LibassOverlayMargins
+)
+
+internal fun libassMarginsNeedApplying(
+    applied: AppliedLibassMargins?,
+    handler: Any,
+    overlay: Any,
+    margins: LibassOverlayMargins
+): Boolean = applied == null ||
+    applied.handler !== handler ||
+    applied.overlay !== overlay ||
+    applied.margins != margins
+
 internal fun libassOverlayMargins(
     overlayWidth: Int,
     overlayHeight: Int,

@@ -2432,6 +2432,9 @@ private fun PlayerView.syncLibassOverlayGeometry() {
         return
     }
 
+    val applied = getTag(R.id.player_view_libass_applied_margins_tag) as? AppliedLibassMargins
+    if (!libassMarginsNeedApplying(applied, assHandler, assOverlayView, margins)) return
+    setTag(R.id.player_view_libass_applied_margins_tag, AppliedLibassMargins(assHandler, assOverlayView, margins))
     assHandler.setMargins(margins.top, margins.bottom, margins.left, margins.right)
     assHandler.setUseMargins(false)
     assOverlayView.invalidateSubtitles()
