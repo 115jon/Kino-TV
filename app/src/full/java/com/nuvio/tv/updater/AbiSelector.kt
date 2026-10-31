@@ -12,15 +12,21 @@ internal object AbiSelector {
         "x86"
     )
 
-    fun chooseBestApkAsset(assets: List<GitHubAssetDto>): GitHubAssetDto? {
-        val apkAssets = assets.filter { it.name.endsWith(".apk", ignoreCase = true) }
+    private const val KINO_APK_PREFIX = "Kino-TV-"
+
+    fun chooseBestApkAsset(
+        assets: List<GitHubAssetDto>,
+        supportedAbis: List<String> = Build.SUPPORTED_ABIS?.toList().orEmpty()
+    ): GitHubAssetDto? {
+        val allApkAssets = assets.filter { it.name.endsWith(".apk", ignoreCase = true) }
+        val apkAssets = allApkAssets
+            .filter { it.name.startsWith(KINO_APK_PREFIX, ignoreCase = true) }
+            .ifEmpty { allApkAssets }
         if (apkAssets.isEmpty()) return null
         if (apkAssets.size == 1) return apkAssets.first()
 
-        val supported = Build.SUPPORTED_ABIS?.toList().orEmpty()
-
         // Prefer exact ABI match (in device preference order)
-        for (abi in supported) {
+        for (abi in supportedAbis) {
             val candidate = apkAssets.firstOrNull { it.name.contains(abi, ignoreCase = true) }
             if (candidate != null) return candidate
         }
